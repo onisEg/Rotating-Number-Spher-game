@@ -32,6 +32,7 @@
             text-align: center;
             color: #fff;
             text-shadow: 0 0 10px rgba(128, 0, 255, 0.7);
+            z-index: 10;
         }
 
         #canvas-container {
@@ -49,6 +50,7 @@
             border-radius: 10px;
             box-shadow: 0 0 15px rgba(128, 0, 255, 0.5);
             width: 250px;
+            z-index: 10;
         }
 
         .control-group {
@@ -124,17 +126,57 @@
         #reset-btn:hover {
             background-color: #7a1fd2;
         }
+
+        .language-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #8a2be2;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 100;
+            box-shadow: 0 0 10px rgba(138, 43, 226, 0.7);
+            transition: all 0.3s ease;
+        }
+
+        .language-toggle:hover {
+            background-color: #7a1fd2;
+            transform: scale(1.05);
+        }
+
+        /* English direction styles */
+        body[dir="ltr"] .controls {
+            left: auto;
+            right: 20px;
+        }
+
+        body[dir="ltr"] .slider-container .slider {
+            margin-left: 0;
+            margin-right: 10px;
+        }
+
+        body[dir="ltr"] .language-toggle {
+            right: auto;
+            left: 20px;
+        }
     </style>
 </head>
 
 <body>
-    <div class="title">Rotating Number Sphere</div>
+    <div class="title" data-ar="Rotating Number Sphere" data-en="Rotating Number Sphere">Rotating Number Sphere</div>
+
+    <button class="language-toggle" id="language-toggle">English</button>
 
     <div id="canvas-container"></div>
 
     <div class="controls">
         <div class="control-group">
-            <label class="control-label">سرعة الدوران</label>
+            <label class="control-label" data-ar="سرعة الدوران" data-en="Rotation Speed">سرعة الدوران</label>
             <div class="slider-container">
                 <span class="value-display" id="speed-value">5</span>
                 <input type="range" min="0" max="10" value="5" step="0.1" class="slider" id="rotation-speed">
@@ -142,7 +184,7 @@
         </div>
 
         <div class="control-group">
-            <label class="control-label">عدد الأرقام</label>
+            <label class="control-label" data-ar="عدد الأرقام" data-en="Numbers Count">عدد الأرقام</label>
             <div class="slider-container">
                 <span class="value-display" id="count-value">100</span>
                 <input type="range" min="10" max="300" value="100" step="10" class="slider" id="numbers-count">
@@ -150,18 +192,45 @@
         </div>
 
         <div class="control-group">
-            <label class="control-label">نصف قطر الكرة</label>
+            <label class="control-label" data-ar="نصف قطر الكرة" data-en="Sphere Radius">نصف قطر الكرة</label>
             <div class="slider-container">
                 <span class="value-display" id="radius-value">150</span>
                 <input type="range" min="50" max="250" value="150" step="10" class="slider" id="sphere-radius">
             </div>
         </div>
 
-        <button id="reset-btn">إعادة تعيين</button>
+        <button id="reset-btn" data-ar="إعادة تعيين" data-en="Reset">إعادة تعيين</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
+        // Language management
+        let currentLanguage = 'ar';
+
+        function toggleLanguage() {
+            currentLanguage = currentLanguage === 'ar' ? 'en' : 'ar';
+            document.documentElement.lang = currentLanguage;
+            document.documentElement.dir = currentLanguage === 'ar' ? 'rtl' : 'ltr';
+
+            // Update all elements with language data
+            document.querySelectorAll('[data-ar][data-en]').forEach(element => {
+                element.textContent = element.getAttribute(`data-${currentLanguage}`);
+            });
+
+            // Update language toggle button text
+            document.getElementById('language-toggle').textContent = currentLanguage === 'ar' ? 'English' : 'العربية';
+        }
+
+        // Make sure the button is visible and clickable
+        document.addEventListener('DOMContentLoaded', function () {
+            const langButton = document.getElementById('language-toggle');
+            if (langButton) {
+                langButton.addEventListener('click', toggleLanguage);
+                langButton.style.display = 'block'; // Ensure it's visible
+                langButton.style.visibility = 'visible'; // Ensure it's visible
+            }
+        });
+
         // إعداد المشهد
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -201,15 +270,15 @@
                 // إنشاء لوحة قماشية للرقم
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
-                canvas.width = 64;
-                canvas.height = 64;
+                canvas.width = 80;
+                canvas.height = 80;
 
                 // خلفية شفافة
                 context.clearRect(0, 0, canvas.width, canvas.height);
 
                 // رسم الرقم
                 context.fillStyle = '#ffffff';
-                context.font = 'bold 40px Arial';
+                context.font = 'bold 60px Arial';
                 context.textAlign = 'center';
                 context.textBaseline = 'middle';
                 context.shadowColor = '#8a2be2';
@@ -232,8 +301,8 @@
                 sprite.position.y = sphereRadius * Math.sin(theta) * Math.sin(phi);
                 sprite.position.z = sphereRadius * Math.cos(phi);
 
-                // حجم الرقم (تصغير الحجم)
-                sprite.scale.set(12, 12, 1);
+                // حجم الرقم
+                sprite.scale.set(15, 15, 1);
 
                 // جعل الرقم يواجه الكاميرا دائماً
                 sprite.lookAt(camera.position);
