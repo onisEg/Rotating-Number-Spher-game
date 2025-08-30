@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotating Number Sphere</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .title {
+            position: absolute;
+            top: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(128, 0, 255, 0.7);
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .controls {
+            position: absolute;
+            left: 20px;
+            bottom: 20px;
+            background-color: rgba(30, 30, 30, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(128, 0, 255, 0.5);
+            width: 250px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #444;
+            outline: none;
+            -webkit-appearance: none;
+            margin-left: 10px;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #8a2be2;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(138, 43, 226, 0.7);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #8a2be2;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(138, 43, 226, 0.7);
+        }
+
+        .value-display {
+            min-width: 30px;
+            text-align: center;
+            font-size: 14px;
+            color: #8a2be2;
+        }
+
+        #reset-btn {
+            margin-top: 15px;
+            width: 100%;
+            padding: 8px;
+            background-color: #8a2be2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        #reset-btn:hover {
+            background-color: #7a1fd2;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="title">Rotating Number Sphere</div>
+
+    <div id="canvas-container"></div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label class="control-label">سرعة الدوران</label>
+            <div class="slider-container">
+                <span class="value-display" id="speed-value">5</span>
+                <input type="range" min="0" max="10" value="5" step="0.1" class="slider" id="rotation-speed">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">عدد الأرقام</label>
+            <div class="slider-container">
+                <span class="value-display" id="count-value">100</span>
+                <input type="range" min="10" max="300" value="100" step="10" class="slider" id="numbers-count">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">نصف قطر الكرة</label>
+            <div class="slider-container">
+                <span class="value-display" id="radius-value">150</span>
+                <input type="range" min="50" max="250" value="150" step="10" class="slider" id="sphere-radius">
+            </div>
+        </div>
+
+        <button id="reset-btn">إعادة تعيين</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // إعداد المشهد
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // إعداد الإضاءة
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+
+        // متغيرات الكرة
+        let sphereGroup = new THREE.Group();
+        scene.add(sphereGroup);
+
+        let rotationSpeed = 0.005;
+        let numbersCount = 100;
+        let sphereRadius = 150;
+
+        // إنشاء الأرقام على الكرة
+        function createNumberSphere() {
+            // حذف الكرة الحالية
+            while (sphereGroup.children.length > 0) {
+                sphereGroup.remove(sphereGroup.children[0]);
+            }
+
+            // إنشاء الأرقام وتوزيعها على سطح الكرة
+            for (let i = 0; i < numbersCount; i++) {
+                // إنشاء رقم عشوائي من 0 إلى 9
+                const randomNumber = Math.floor(Math.random() * 10);
+
+                // إنشاء لوحة قماشية للرقم
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 64;
+                canvas.height = 64;
+
+                // خلفية شفافة
+                context.clearRect(0, 0, canvas.width, canvas.height);
+
+                // رسم الرقم
+                context.fillStyle = '#ffffff';
+                context.font = 'bold 40px Arial';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.shadowColor = '#8a2be2';
+                context.shadowBlur = 8;
+                context.fillText(randomNumber.toString(), canvas.width / 2, canvas.height / 2);
+
+                // إنشاء نسيج من اللوحة
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMaterial = new THREE.SpriteMaterial({
+                    map: texture,
+                    transparent: true
+                });
+                const sprite = new THREE.Sprite(spriteMaterial);
+
+                // توزيع الأرقام على سطح الكرة
+                const phi = Math.acos(-1 + (2 * i) / numbersCount);
+                const theta = Math.sqrt(numbersCount * Math.PI) * phi;
+
+                sprite.position.x = sphereRadius * Math.cos(theta) * Math.sin(phi);
+                sprite.position.y = sphereRadius * Math.sin(theta) * Math.sin(phi);
+                sprite.position.z = sphereRadius * Math.cos(phi);
+
+                // حجم الرقم (تصغير الحجم)
+                sprite.scale.set(12, 12, 1);
+
+                // جعل الرقم يواجه الكاميرا دائماً
+                sprite.lookAt(camera.position);
+
+                // إضافة الرقم إلى المجموعة
+                sphereGroup.add(sprite);
+            }
+        }
+
+        // إنشاء الكرة الأولية
+        createNumberSphere();
+
+        // وضع الكاميرا
+        camera.position.z = 400;
+
+        // معالجة أحداث التحكم
+        const rotationSpeedSlider = document.getElementById('rotation-speed');
+        const numbersCountSlider = document.getElementById('numbers-count');
+        const sphereRadiusSlider = document.getElementById('sphere-radius');
+        const resetButton = document.getElementById('reset-btn');
+
+        const speedValue = document.getElementById('speed-value');
+        const countValue = document.getElementById('count-value');
+        const radiusValue = document.getElementById('radius-value');
+
+        rotationSpeedSlider.addEventListener('input', function () {
+            rotationSpeed = this.value / 1000;
+            speedValue.textContent = this.value;
+        });
+
+        numbersCountSlider.addEventListener('input', function () {
+            numbersCount = parseInt(this.value);
+            countValue.textContent = this.value;
+            createNumberSphere();
+        });
+
+        sphereRadiusSlider.addEventListener('input', function () {
+            sphereRadius = parseInt(this.value);
+            radiusValue.textContent = this.value;
+            createNumberSphere();
+        });
+
+        resetButton.addEventListener('click', function () {
+            rotationSpeedSlider.value = 5;
+            numbersCountSlider.value = 100;
+            sphereRadiusSlider.value = 150;
+
+            rotationSpeed = 0.005;
+            numbersCount = 100;
+            sphereRadius = 150;
+
+            speedValue.textContent = '5';
+            countValue.textContent = '100';
+            radiusValue.textContent = '150';
+
+            createNumberSphere();
+        });
+
+        // معالجة تغيير حجم النافذة
+        window.addEventListener('resize', function () {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // دالة الرسم المتحرك
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // تدوير الكرة
+            sphereGroup.rotation.x += rotationSpeed;
+            sphereGroup.rotation.y += rotationSpeed;
+
+            // جعل جميع الأرقام تواجه الكاميرا
+            sphereGroup.children.forEach(child => {
+                if (child instanceof THREE.Sprite) {
+                    child.lookAt(camera.position);
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // بدء الرسم المتحرك
+        animate();
+    </script>
+</body>
+
+</html>
